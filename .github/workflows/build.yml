@@ -8,6 +8,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Unpack and locate project
+        run: |
+          zipfile="$(ls *.zip | head -1)"
+          echo "Using: $zipfile"
+          unzip -q "$zipfile" -d proj
+          find proj -maxdepth 3 | head -40
+          settings="$(find proj -name settings.gradle.kts | head -1)"
+          if [ -z "$settings" ]; then echo "settings.gradle.kts not found in zip"; exit 1; fi
+          echo "PROJ=$(dirname "$settings")" >> "$GITHUB_ENV"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -15,8 +24,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
-      - run: gradle assembleRelease --no-daemon
+      - name: Build
+        run: cd "$PROJ" && gradle assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: BotChat-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: ${{ env.PROJ }}/app/build/outputs/apk/release/*.apk
